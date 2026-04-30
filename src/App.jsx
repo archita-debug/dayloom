@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
 // ─── Google Fonts ─────────────────────────────────────────────────────────────
 const FONT_LINK = document.createElement("link");
@@ -21,6 +21,7 @@ STYLE.textContent = `
 
   @keyframes fadeUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
   @keyframes popIn  { from { opacity:0; transform:scale(.93); } to { opacity:1; transform:scale(1); } }
+  @keyframes spin   { to { transform: rotate(360deg); } }
   @keyframes drift1 { 0%,100%{transform:translate(0,0) rotate(0deg);} 33%{transform:translate(15px,-20px) rotate(5deg);} 66%{transform:translate(-10px,10px) rotate(-3deg);} }
   @keyframes drift2 { 0%,100%{transform:translate(0,0) rotate(0deg);} 33%{transform:translate(-18px,12px) rotate(-6deg);} 66%{transform:translate(8px,-15px) rotate(4deg);} }
   @keyframes drift3 { 0%,100%{transform:translate(0,0) rotate(0deg);} 50%{transform:translate(12px,18px) rotate(-5deg);} }
@@ -33,13 +34,15 @@ STYLE.textContent = `
   .pill-btn:hover,.pill-btn.active { background:var(--ink); color:#fff; border-color:var(--ink); }
   .pill-btn.red { background:var(--pinterest-red); color:#fff; border-color:var(--pinterest-red); }
   .pill-btn.red:hover { background:#c0001e; border-color:#c0001e; }
+  .pill-btn:disabled { opacity:0.6; cursor:not-allowed; }
 
-  /* font-size:16px prevents iOS zoom on focus */
   .pin-input { background:#FFF8F4; border:1.5px solid var(--border); border-radius:14px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:16px; color:var(--ink); outline:none; width:100%; transition:border-color .15s,box-shadow .15s; -webkit-appearance:none; appearance:none; }
   .pin-input:focus { border-color:var(--rose); box-shadow:0 0 0 3px rgba(212,117,106,.12); }
 
   .masonry { columns:2; column-gap:14px; }
   .masonry > * { break-inside:avoid; margin-bottom:14px; }
+
+  .spinner { width:20px; height:20px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; }
 
   ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--sand);border-radius:10px;}
 
@@ -49,7 +52,6 @@ STYLE.textContent = `
     .pin-card { border-radius:14px; }
   }
 
-  /* Login */
   .login-grid { display:grid; grid-template-columns:1fr 1fr; min-height:100vh; }
   @media (max-width: 700px) {
     .login-grid { grid-template-columns:1fr; }
@@ -57,25 +59,19 @@ STYLE.textContent = `
     .login-form { padding:28px 20px !important; min-height:100vh; }
   }
 
-  /* Home board */
   .home-board-grid { columns:2; column-gap:16px; }
   @media (max-width: 600px) { .home-board-grid { columns:1; } }
   .home-title { font-family:'Playfair Display',serif; font-size:46px; font-weight:700; color:var(--ink); line-height:1.1; margin-bottom:14px; }
   @media (max-width: 600px) { .home-title { font-size:28px; } }
 
-  /* Section wrap */
   .section-wrap { max-width:860px; margin:0 auto; padding:24px 28px; }
   @media (max-width: 600px) { .section-wrap { padding:14px 12px; } }
 
-  /* Page header */
   .page-header { padding:26px 28px; }
   @media (max-width: 600px) { .page-header { padding:18px 14px; } }
 
-  /* Stat pills */
   .stat-pills { display:flex; gap:10px; flex-wrap:wrap; }
-  @media (max-width: 480px) { .stat-pills { gap:6px; } }
 
-  /* Tasks sidebar+main */
   .tasks-layout { display:grid; grid-template-columns:190px 1fr; gap:22px; }
   @media (max-width: 700px) {
     .tasks-layout { grid-template-columns:1fr; }
@@ -88,29 +84,24 @@ STYLE.textContent = `
     .task-filter-list button { flex-shrink:0; }
   }
 
-  /* Budget */
   .budget-summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
   @media (max-width: 600px) { .budget-summary { grid-template-columns:1fr; gap:8px; } }
   .budget-limits-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width: 600px) { .budget-limits-grid { grid-template-columns:1fr; } }
   .budget-actions { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
 
-  /* Journal */
-  .journal-layout { display:grid; grid-template-columns:260px 1fr; min-height:100vh; }
+  .journal-layout { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 90px); }
   @media (max-width: 700px) {
     .journal-layout { grid-template-columns:1fr; min-height:auto; }
     .journal-sidebar { border-right:none !important; border-bottom:1px solid var(--border); max-height:240px; }
     .journal-main { padding:20px 14px !important; }
   }
 
-  /* Fitness */
   .fitness-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
   @media (max-width: 700px) { .fitness-stats { grid-template-columns:1fr 1fr; gap:8px; } }
   .fitness-stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width: 600px) { .fitness-stat-grid { grid-template-columns:1fr; } }
-  @media (max-width: 600px) { .fitness-stat-grid .span-2 { grid-column:span 1 !important; } }
 
-  /* Form grids */
   .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
   @media (max-width: 600px) { .form-grid-3 { grid-template-columns:1fr; } }
   .form-grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; }
@@ -119,56 +110,164 @@ STYLE.textContent = `
   @media (max-width: 480px) { .form-row-add { grid-template-columns:1fr 1fr; }
     .form-row-add > :first-child { grid-column:span 2; } }
 
-  /* Add habit */
   .add-habit-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .habit-icon-input { width:52px !important; text-align:center; font-size:18px !important; flex-shrink:0; }
 
-  /* Bottom nav */
   .bottom-nav { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:200; background:rgba(253,248,243,.94); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-radius:999px; padding:7px 10px; display:flex; gap:4px; border:1px solid var(--border); box-shadow:0 8px 32px rgba(44,31,26,.15); }
   @media (max-width: 480px) {
     .bottom-nav { padding:5px 7px; gap:2px; bottom:10px; }
     .bottom-nav button { width:34px !important; height:34px !important; font-size:15px !important; }
   }
-
-  /* Page bottom padding to clear floating nav */
   .page-body { padding-bottom:90px; }
-
-  /* Mood picker */
   .mood-picker { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; align-items:center; }
-  @media (max-width:480px) { .mood-picker button { width:38px !important; height:38px !important; } }
-
-  /* Week bar chart */
   .week-bar { display:flex; align-items:flex-end; gap:8px; height:80px; }
-  @media (max-width:480px) { .week-bar { gap:4px; } }
-
-  /* Transaction row */
   .txn-desc { font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-  /* SectionHeader on small screens */
   .section-header-wrap { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:8px; }
-
-  /* Tab bar */
   .tab-bar { display:flex; gap:6px; background:var(--card); border-radius:14px; padding:5px; border:1px solid var(--border); }
 `;
 document.head.appendChild(STYLE);
 
 // ══════════════════════════════════════════════════════════════════════════════
-// AUTH
+// SUPABASE CLIENT  (no npm needed — using the REST API directly)
 // ══════════════════════════════════════════════════════════════════════════════
-function getUsers() { try { return JSON.parse(localStorage.getItem("__users__") || "{}"); } catch { return {}; } }
-function saveUsers(u) { try { localStorage.setItem("__users__", JSON.stringify(u)); } catch {} }
-function getCurrentSession() { try { return localStorage.getItem("__session__") || null; } catch { return null; } }
-function setSession(u) { try { u ? localStorage.setItem("__session__", u) : localStorage.removeItem("__session__"); } catch {} }
+const SUPA_URL  = "https://nhricohdcwqvmkhrenmq.supabase.co";
+const SUPA_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocmljb2hkY3dxdm1raHJlbm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTQ1NTksImV4cCI6MjA5MzEzMDU1OX0.DHPhcUZVCgGR9fAEbh3E_cHmivkO-X_SNrp5eYZgicc";
 
-function usePersist(username, key, init) {
-  const nsKey = `u:${username}:${key}`;
-  const [state, setState] = useState(() => {
-    try { const v = localStorage.getItem(nsKey); return v ? JSON.parse(v) : init; } catch { return init; }
-  });
-  useEffect(() => { try { localStorage.setItem(nsKey, JSON.stringify(state)); } catch {} }, [state, nsKey]);
-  return [state, setState];
+// Persist auth token in localStorage so session survives refresh
+let _token   = localStorage.getItem("sb_token") || null;
+let _userId  = localStorage.getItem("sb_uid")   || null;
+let _userEmail = localStorage.getItem("sb_email") || null;
+
+function authHeaders(extra = {}) {
+  return {
+    "Content-Type":  "application/json",
+    "apikey":        SUPA_KEY,
+    "Authorization": `Bearer ${_token || SUPA_KEY}`,
+    ...extra,
+  };
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function supaSignUp(email, password) {
+  const r = await fetch(`${SUPA_URL}/auth/v1/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": SUPA_KEY },
+    body: JSON.stringify({ email, password }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.msg || d.error_description || "Sign-up failed");
+  return d;
+}
+
+async function supaSignIn(email, password) {
+  const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": SUPA_KEY },
+    body: JSON.stringify({ email, password }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error_description || d.msg || "Sign-in failed");
+  _token  = d.access_token;
+  _userId = d.user?.id;
+  _userEmail = d.user?.email;
+  localStorage.setItem("sb_token",  _token);
+  localStorage.setItem("sb_uid",    _userId);
+  localStorage.setItem("sb_email",  _userEmail);
+  return d;
+}
+
+async function supaSignOut() {
+  await fetch(`${SUPA_URL}/auth/v1/logout`, {
+    method: "POST", headers: authHeaders(),
+  }).catch(()=>{});
+  _token = _userId = _userEmail = null;
+  localStorage.removeItem("sb_token");
+  localStorage.removeItem("sb_uid");
+  localStorage.removeItem("sb_email");
+}
+
+// Refresh token on load (keep session alive)
+async function supaRefreshToken() {
+  const refresh = localStorage.getItem("sb_refresh");
+  if (!refresh) return false;
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPA_KEY },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    const d = await r.json();
+    if (!r.ok) return false;
+    _token  = d.access_token;
+    _userId = d.user?.id;
+    _userEmail = d.user?.email;
+    localStorage.setItem("sb_token",   _token);
+    localStorage.setItem("sb_uid",     _userId);
+    localStorage.setItem("sb_email",   _userEmail);
+    localStorage.setItem("sb_refresh", d.refresh_token);
+    return true;
+  } catch { return false; }
+}
+
+// ── Data (user_data table) ────────────────────────────────────────────────────
+async function dbGet(key) {
+  const r = await fetch(
+    `${SUPA_URL}/rest/v1/user_data?user_id=eq.${_userId}&key=eq.${key}&select=value`,
+    { headers: authHeaders({ "Accept": "application/json" }) }
+  );
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows[0]?.value ?? null;
+}
+
+async function dbSet(key, value) {
+  // Upsert: insert or update if key already exists for this user
+  const r = await fetch(`${SUPA_URL}/rest/v1/user_data`, {
+    method: "POST",
+    headers: authHeaders({
+      "Prefer": "resolution=merge-duplicates",
+    }),
+    body: JSON.stringify({ user_id: _userId, key, value }),
+  });
+  if (!r.ok) {
+    const e = await r.text();
+    console.error("dbSet error:", e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// useSupaPersist — replaces usePersist. Loads from Supabase, saves on change.
+// ══════════════════════════════════════════════════════════════════════════════
+function useSupaPersist(key, init) {
+  const [state, setState] = useState(init);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load once on mount
+  useEffect(() => {
+    let cancelled = false;
+    dbGet(key).then(v => {
+      if (!cancelled) {
+        if (v !== null) setState(v);
+        setLoaded(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [key]);
+
+  // Save whenever state changes (but not before initial load)
+  const saveTimer = useState(null);
+  useEffect(() => {
+    if (!loaded) return;
+    // Debounce writes by 600ms to avoid hammering the API
+    clearTimeout(saveTimer[0]);
+    saveTimer[0] = setTimeout(() => { dbSet(key, state); }, 600);
+    return () => clearTimeout(saveTimer[0]);
+  }, [state, loaded, key]);
+
+  return [state, setState, loaded];
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const uid = () => Math.random().toString(36).slice(2, 9);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -177,6 +276,14 @@ const fmt = (n) => n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximum
 const days7 = () => { const o=[]; for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);o.push(d.toISOString().slice(0,10));} return o; };
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
+function Loader({ text = "Loading…" }) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:16,fontFamily:"'Nunito',sans-serif",color:"var(--warm-gray)"}}>
+      <div style={{width:36,height:36,border:"3px solid var(--border)",borderTopColor:"var(--rose)",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
+      <div style={{fontSize:14}}>{text}</div>
+    </div>
+  );
+}
 function ProgressBar({ value, max, color="var(--rose)", height=6 }) {
   const p = clamp(pct(value, max), 0, 100);
   return <div style={{background:"rgba(0,0,0,.06)",borderRadius:999,height,overflow:"hidden",width:"100%"}}><div style={{width:`${p}%`,height:"100%",background:color,borderRadius:999,transition:"width .5s ease"}}/></div>;
@@ -201,29 +308,47 @@ function StatPill({ label, value, color="var(--rose)" }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// LOGIN
+// LOGIN PAGE  (now uses email + password via Supabase Auth)
 // ══════════════════════════════════════════════════════════════════════════════
 function LoginPage({ onLogin }) {
   const [mode, setMode] = useState("login");
-  const [username, setUsername] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
+  const [confirm, setConfirm]   = useState("");
+  const [error, setError]       = useState("");
+  const [loading, setLoading]   = useState(false);
 
-  const submit = () => {
-    const u = username.trim().toLowerCase();
-    if (!u || !password) { setError("Please fill in all fields."); return; }
-    const users = getUsers();
-    if (mode === "signup") {
-      if (password.length < 4) { setError("Password must be at least 4 characters."); return; }
-      if (password !== confirm) { setError("Passwords don't match."); return; }
-      if (users[u]) { setError("Username already taken. Try another."); return; }
-      users[u] = { password, createdAt: new Date().toISOString() };
-      saveUsers(users); setSession(u); onLogin(u);
-    } else {
-      if (!users[u]) { setError("No account found. Sign up first!"); return; }
-      if (users[u].password !== password) { setError("Wrong password. Try again."); return; }
-      setSession(u); onLogin(u);
+  const submit = async () => {
+    const e = email.trim().toLowerCase();
+    if (!e || !password) { setError("Please fill in all fields."); return; }
+    if (mode === "signup" && password !== confirm) { setError("Passwords don't match."); return; }
+    if (mode === "signup" && password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setLoading(true); setError("");
+    try {
+      if (mode === "signup") {
+        const d = await supaSignUp(e, password);
+        // If email confirmation is off, user is returned directly
+        if (d.access_token) {
+          _token = d.access_token; _userId = d.user?.id; _userEmail = d.user?.email;
+          localStorage.setItem("sb_token", _token);
+          localStorage.setItem("sb_uid",   _userId);
+          localStorage.setItem("sb_email", _userEmail);
+          if (d.refresh_token) localStorage.setItem("sb_refresh", d.refresh_token);
+          onLogin(e);
+        } else {
+          // Email confirmation required
+          setError("Check your email to confirm your account, then sign in.");
+          setMode("login");
+        }
+      } else {
+        const d = await supaSignIn(e, password);
+        if (d.refresh_token) localStorage.setItem("sb_refresh", d.refresh_token);
+        onLogin(e);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -237,7 +362,7 @@ function LoginPage({ onLogin }) {
 
   return (
     <div className="login-grid" style={{fontFamily:"'Nunito',sans-serif"}}>
-      {/* Decorative left panel — hidden on mobile */}
+      {/* Left decorative panel */}
       <div className="login-deco" style={{background:"linear-gradient(155deg,#FDF0EB 0%,#F9E4DA 40%,#F2D0C2 100%)",position:"relative",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",padding:48}}>
         <div className="blob1" style={{position:"absolute",top:"10%",left:"5%",width:180,height:180,borderRadius:"60% 40% 50% 60%",background:"rgba(212,117,106,.15)"}}/>
         <div className="blob2" style={{position:"absolute",bottom:"12%",right:"8%",width:140,height:140,borderRadius:"50% 60% 40% 50%",background:"rgba(143,175,138,.18)"}}/>
@@ -259,7 +384,7 @@ function LoginPage({ onLogin }) {
         </div>
       </div>
 
-      {/* Form panel */}
+      {/* Right form panel */}
       <div className="login-form" style={{background:"var(--cream)",display:"flex",alignItems:"center",justifyContent:"center",padding:48}}>
         <div style={{width:"100%",maxWidth:380,animation:"fadeUp .5s ease .1s both"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
@@ -270,17 +395,19 @@ function LoginPage({ onLogin }) {
             {mode==="login"?"Welcome back":"Create account"}
           </div>
           <div style={{fontSize:14,color:"var(--warm-gray)",marginBottom:26}}>
-            {mode==="login"?"Sign in to your personal boards.":"Start tracking your goals today."}
+            {mode==="login"?"Sign in to access your boards from any device.":"Start tracking your goals today."}
           </div>
+
           {error&&<div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#DC2626",animation:"popIn .2s ease"}}>⚠️ {error}</div>}
+
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             <div>
-              <label style={{fontSize:12,fontWeight:700,color:"var(--warm-gray)",textTransform:"uppercase",letterSpacing:".08em",display:"block",marginBottom:6}}>Username</label>
-              <input className="pin-input" value={username} onChange={e=>{setUsername(e.target.value);setError("");}} placeholder="e.g. sarah_creates" onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="username"/>
+              <label style={{fontSize:12,fontWeight:700,color:"var(--warm-gray)",textTransform:"uppercase",letterSpacing:".08em",display:"block",marginBottom:6}}>Email</label>
+              <input className="pin-input" type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} placeholder="you@example.com" onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="email"/>
             </div>
             <div>
               <label style={{fontSize:12,fontWeight:700,color:"var(--warm-gray)",textTransform:"uppercase",letterSpacing:".08em",display:"block",marginBottom:6}}>Password</label>
-              <input className="pin-input" type="password" value={password} onChange={e=>{setPassword(e.target.value);setError("");}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete={mode==="login"?"current-password":"new-password"}/>
+              <input className="pin-input" type="password" value={password} onChange={e=>{setPassword(e.target.value);setError("");}} placeholder="Min 6 characters" onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete={mode==="login"?"current-password":"new-password"}/>
             </div>
             {mode==="signup"&&(
               <div style={{animation:"popIn .2s ease"}}>
@@ -288,18 +415,16 @@ function LoginPage({ onLogin }) {
                 <input className="pin-input" type="password" value={confirm} onChange={e=>{setConfirm(e.target.value);setError("");}} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&submit()} autoComplete="new-password"/>
               </div>
             )}
-            <button className="pill-btn red" onClick={submit} style={{padding:"13px 24px",fontSize:15,fontWeight:700,marginTop:4,width:"100%",borderRadius:14}}>
-              {mode==="login"?"Sign in →":"Create my account →"}
+            <button className="pill-btn red" onClick={submit} disabled={loading} style={{padding:"13px 24px",fontSize:15,fontWeight:700,marginTop:4,width:"100%",borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+              {loading ? <><div className="spinner"/> {mode==="login"?"Signing in…":"Creating account…"}</> : mode==="login"?"Sign in →":"Create my account →"}
             </button>
           </div>
+
           <div style={{marginTop:22,textAlign:"center",fontSize:13,color:"var(--warm-gray)"}}>
             {mode==="login"?"Don't have an account? ":"Already have an account? "}
             <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setPassword("");setConfirm("");}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--terracotta)",fontWeight:700,fontFamily:"'Nunito',sans-serif",fontSize:13,padding:0}}>
               {mode==="login"?"Sign up":"Sign in"}
             </button>
-          </div>
-          <div style={{marginTop:26,padding:"14px 16px",background:"var(--sand)",borderRadius:14,fontSize:12,color:"var(--warm-gray)",lineHeight:1.6}}>
-            <strong style={{color:"var(--ink)"}}>💡 How it works:</strong> Each account has its own saved data. Create any username — no email needed. Your data is stored in your browser, separate per user.
           </div>
         </div>
       </div>
@@ -320,9 +445,9 @@ const DEF_HABITS = [
 ];
 const PALETTE = ["#F87171","#FB923C","#FBBF24","#34D399","#60A5FA","#A78BFA","#C084FC","#F472B6"];
 
-function HabitsTemplate({ username }) {
-  const [habits, setHabits] = usePersist(username,"habits_v1",DEF_HABITS);
-  const [logs, setLogs] = usePersist(username,"habits_logs_v1",{});
+function HabitsTemplate() {
+  const [habits, setHabits, hLoaded] = useSupaPersist("habits_v1", DEF_HABITS);
+  const [logs,   setLogs,   lLoaded] = useSupaPersist("habits_logs_v1", {});
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState(""); const [newIcon, setNewIcon] = useState("⭐"); const [newColor, setNewColor] = useState("#F87171");
   const today=todayISO(), mo=new Date().getMonth(), yr=new Date().getFullYear();
@@ -333,6 +458,8 @@ function HabitsTemplate({ username }) {
   const tdDone=habits.filter(h=>isL(h.id,today)).length;
   const streak=(()=>{let s=0,d=new Date();while(true){const dk=d.toISOString().slice(0,10);if(habits.every(h=>isL(h.id,dk)))s++;else break;d.setDate(d.getDate()-1);}return s;})();
   const addHabit=()=>{if(!newName.trim())return;setHabits(p=>[...p,{id:uid(),name:newName.trim(),icon:newIcon,goal:30,color:newColor}]);setNewName("");setAdding(false);};
+
+  if (!hLoaded || !lLoaded) return <Loader text="Loading habits…"/>;
 
   return (
     <div style={{background:"var(--cream)",minHeight:"100vh",fontFamily:"'Nunito',sans-serif"}}>
@@ -349,7 +476,6 @@ function HabitsTemplate({ username }) {
           </div>
         </div>
       </div>
-
       <div className="section-wrap page-body">
         <SectionHeader title="Today's Habits" subtitle={`${tdDone} of ${habits.length} complete`} action={<button className="pill-btn red" onClick={()=>setAdding(p=>!p)}>+ Add</button>}/>
         {adding&&(
@@ -358,10 +484,7 @@ function HabitsTemplate({ username }) {
               <input className="pin-input habit-icon-input" value={newIcon} onChange={e=>setNewIcon(e.target.value)} placeholder="🌟"/>
               <input className="pin-input" value={newName} onChange={e=>setNewName(e.target.value)} style={{flex:1,minWidth:100}} placeholder="New habit name…" onKeyDown={e=>e.key==="Enter"&&addHabit()}/>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{PALETTE.map(c=><button key={c} onClick={()=>setNewColor(c)} style={{width:20,height:20,borderRadius:"50%",background:c,border:newColor===c?"3px solid var(--ink)":"2.5px solid transparent",cursor:"pointer",flexShrink:0}}/>)}</div>
-              <div style={{display:"flex",gap:6}}>
-                <button className="pill-btn red" onClick={addHabit} style={{fontSize:12,padding:"6px 14px"}}>Add</button>
-                <button className="pill-btn" onClick={()=>setAdding(false)} style={{fontSize:12,padding:"6px 12px"}}>×</button>
-              </div>
+              <div style={{display:"flex",gap:6}}><button className="pill-btn red" onClick={addHabit} style={{fontSize:12,padding:"6px 14px"}}>Add</button><button className="pill-btn" onClick={()=>setAdding(false)} style={{fontSize:12,padding:"6px 12px"}}>×</button></div>
             </div>
           </div>
         )}
@@ -411,8 +534,8 @@ const TASK_CATS={work:{label:"Work",color:"#60A5FA"},personal:{label:"Personal",
 const DEF_TASKS=[{id:uid(),title:"Prepare project proposal",cat:"work",done:false,pri:"high",due:"",note:""},{id:uid(),title:"Buy groceries",cat:"personal",done:false,pri:"medium",due:"",note:""},{id:uid(),title:"Fix the login bug",cat:"urgent",done:false,pri:"high",due:"",note:"Auth token expiry"},{id:uid(),title:"Read design system docs",cat:"later",done:false,pri:"low",due:"",note:""}];
 const PRI={high:"#EF4444",medium:"#F59E0B",low:"#34D399"};
 
-function TaskTemplate({ username }) {
-  const [tasks,setTasks]=usePersist(username,"tasks_v1",DEF_TASKS);
+function TaskTemplate() {
+  const [tasks, setTasks, loaded] = useSupaPersist("tasks_v1", DEF_TASKS);
   const [adding,setAdding]=useState(false);const [editId,setEditId]=useState(null);
   const [form,setForm]=useState({title:"",cat:"work",pri:"medium",due:"",note:""});
   const [filter,setFilter]=useState("all");const [search,setSearch]=useState("");
@@ -421,6 +544,8 @@ function TaskTemplate({ username }) {
   const submit=()=>{if(!form.title.trim())return;if(editId){setTasks(p=>p.map(t=>t.id===editId?{...t,...form}:t));setEditId(null);}else setTasks(p=>[...p,{id:uid(),done:false,...form}]);setForm({title:"",cat:"work",pri:"medium",due:"",note:""});setAdding(false);};
   const total=tasks.length,done=tasks.filter(t=>t.done).length;
   const filterOptions=[{k:"all",label:"All tasks",cnt:total},{k:"done",label:"Completed",cnt:done},...Object.entries(TASK_CATS).map(([k,v])=>({k,label:v.label,cnt:tasks.filter(t=>t.cat===k).length}))];
+
+  if (!loaded) return <Loader text="Loading tasks…"/>;
 
   return (
     <div style={{background:"var(--cream)",minHeight:"100vh",fontFamily:"'Nunito',sans-serif"}}>
@@ -431,16 +556,11 @@ function TaskTemplate({ username }) {
           <div className="stat-pills"><StatPill label="Total" value={total} color="var(--ink)"/><StatPill label="Done" value={done} color="var(--sage)"/><StatPill label="Left" value={total-done} color="var(--terracotta)"/></div>
         </div>
       </div>
-
       <div className="section-wrap page-body">
-        {/* Mobile: filter toggle + new task row */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8}}>
-          <button className="pill-btn" onClick={()=>setShowSidebar(p=>!p)} style={{fontSize:12}}>
-            {showSidebar?"Hide filters":"Filter ↓"}
-          </button>
+          <button className="pill-btn" onClick={()=>setShowSidebar(p=>!p)} style={{fontSize:12}}>{showSidebar?"Hide filters":"Filter ↓"}</button>
           <button className="pill-btn red" onClick={()=>{setAdding(true);setEditId(null);setForm({title:"",cat:"work",pri:"medium",due:"",note:""});setShowSidebar(false);}} style={{fontSize:12}}>+ New task</button>
         </div>
-
         <div className="tasks-layout">
           <div className={`tasks-sidebar${showSidebar?" open":""}`}>
             <input className="pin-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search…" style={{fontSize:14,marginBottom:12}}/>
@@ -457,7 +577,6 @@ function TaskTemplate({ username }) {
               <div style={{fontSize:11,color:"var(--warm-gray)",marginTop:5}}>Progress</div>
             </div>
           </div>
-
           <div>
             {(adding||editId)&&(
               <div className="pin-card" style={{padding:"14px",marginBottom:12,animation:"popIn .2s ease"}}>
@@ -507,15 +626,17 @@ const ECATS={food:{label:"Food & Dining",icon:"🍽️",color:"#F59E0B"},transpo
 const DEF_TXN=[{id:uid(),type:"income",desc:"Salary",amount:50000,cat:"other",date:todayISO()},{id:uid(),type:"expense",desc:"Groceries",amount:2400,cat:"food",date:todayISO()},{id:uid(),type:"expense",desc:"Netflix",amount:649,cat:"entertainment",date:todayISO()},{id:uid(),type:"expense",desc:"Metro card",amount:500,cat:"transport",date:todayISO()}];
 const DEF_BUD={food:8000,transport:3000,shopping:5000,health:2000,entertainment:2000,bills:5000,other:3000};
 
-function BudgetTemplate({ username }) {
-  const [txns,setTxns]=usePersist(username,"budget_txns_v1",DEF_TXN);
-  const [budgets,setBudgets]=usePersist(username,"budget_limits_v1",DEF_BUD);
+function BudgetTemplate() {
+  const [txns,    setTxns,    t1] = useSupaPersist("budget_txns_v1",   DEF_TXN);
+  const [budgets, setBudgets, t2] = useSupaPersist("budget_limits_v1", DEF_BUD);
   const [adding,setAdding]=useState(false);const [form,setForm]=useState({type:"expense",desc:"",amount:"",cat:"food",date:todayISO()});const [tab,setTab]=useState("overview");
   const inc=txns.filter(t=>t.type==="income").reduce((a,t)=>a+t.amount,0);
   const exp=txns.filter(t=>t.type==="expense").reduce((a,t)=>a+t.amount,0);
   const bal=inc-exp;
   const catT=Object.keys(ECATS).reduce((acc,k)=>{acc[k]=txns.filter(t=>t.type==="expense"&&t.cat===k).reduce((a,t)=>a+t.amount,0);return acc;},{});
   const submit=()=>{if(!form.desc.trim()||!form.amount)return;setTxns(p=>[{id:uid(),...form,amount:parseFloat(form.amount)},...p]);setForm({type:"expense",desc:"",amount:"",cat:"food",date:todayISO()});setAdding(false);};
+
+  if (!t1||!t2) return <Loader text="Loading budget…"/>;
 
   return (
     <div style={{background:"var(--cream)",minHeight:"100vh",fontFamily:"'Nunito',sans-serif"}}>
@@ -533,15 +654,11 @@ function BudgetTemplate({ username }) {
           </div>
         </div>
       </div>
-
       <div className="section-wrap page-body">
         <div className="budget-actions">
-          <div className="tab-bar">
-            {["overview","transactions","budgets"].map(t=><button key={t} onClick={()=>setTab(t)} className={`pill-btn${tab===t?" active":""}`} style={{padding:"6px 12px",fontSize:12}}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>)}
-          </div>
+          <div className="tab-bar">{["overview","transactions","budgets"].map(t=><button key={t} onClick={()=>setTab(t)} className={`pill-btn${tab===t?" active":""}`} style={{padding:"6px 12px",fontSize:12}}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>)}</div>
           <button className="pill-btn red" onClick={()=>setAdding(p=>!p)} style={{fontSize:12}}>+ Add</button>
         </div>
-
         {adding&&(
           <div className="pin-card" style={{padding:"14px",marginBottom:16,animation:"popIn .2s ease"}}>
             <div className="form-grid-3" style={{marginBottom:10}}>
@@ -556,11 +673,8 @@ function BudgetTemplate({ username }) {
             </div>
           </div>
         )}
-
         {tab==="overview"&&<div className="masonry">{Object.entries(ECATS).map(([k,v],i)=>{const sp=catT[k]||0,bu=budgets[k]||0,ov=sp>bu&&bu>0;return(<div key={k} className="pin-card" style={{padding:"14px",animationDelay:`${i*.05}s`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:32,height:32,borderRadius:10,background:v.color+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{v.icon}</div><span style={{fontSize:12,fontWeight:700,color:"var(--ink)"}}>{v.label}</span></div><div style={{textAlign:"right"}}><div style={{fontSize:13,fontWeight:700,color:ov?"#EF4444":"var(--ink)"}}>₹{fmt(sp)}</div><div style={{fontSize:10,color:"var(--warm-gray)"}}>of ₹{fmt(bu)}</div></div></div><ProgressBar value={sp} max={bu||sp||1} color={ov?"#EF4444":v.color} height={5}/>{ov&&<div style={{fontSize:10,color:"#EF4444",marginTop:4}}>Over by ₹{fmt(sp-bu)}</div>}</div>);})}</div>}
-
-        {tab==="transactions"&&<div className="pin-card" style={{overflow:"hidden",padding:0}}>{txns.length===0&&<div style={{padding:"36px",textAlign:"center",color:"var(--warm-gray)",fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontStyle:"italic"}}>No transactions yet</div>}{txns.map((t,i)=>{const c=ECATS[t.cat];return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:i<txns.length-1?"1px solid var(--border)":"none"}}><div style={{width:34,height:34,borderRadius:10,background:c?.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{c?.icon}</div><div style={{flex:1,minWidth:0}}><div className="txn-desc">{t.desc}</div><div style={{fontSize:11,color:"var(--warm-gray)"}}>{t.date}</div></div><div style={{fontSize:13,fontWeight:700,color:t.type==="income"?"#059669":"#DC2626",flexShrink:0}}>{t.type==="income"?"+":"−"}₹{fmt(t.amount)}</div><button onClick={()=>setTxns(p=>p.filter(x=>x.id!==t.id))} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sand)",fontSize:18,flexShrink:0,touchAction:"manipulation"}}>×</button></div>);})}</div>}
-
+        {tab==="transactions"&&<div className="pin-card" style={{overflow:"hidden",padding:0}}>{txns.length===0&&<div style={{padding:"36px",textAlign:"center",color:"var(--warm-gray)",fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontStyle:"italic"}}>No transactions yet</div>}{txns.map((t,i)=>{const c=ECATS[t.cat];return(<div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:i<txns.length-1?"1px solid var(--border)":"none"}}><div style={{width:34,height:34,borderRadius:10,background:c?.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{c?.icon}</div><div style={{flex:1,minWidth:0}}><div className="txn-desc">{t.desc}</div><div style={{fontSize:11,color:"var(--warm-gray)"}}>{t.date}</div></div><div style={{fontSize:13,fontWeight:700,color:t.type==="income"?"#059669":"#DC2626",flexShrink:0}}>{t.type==="income"?"+":"−"}₹{fmt(t.amount)}</div><button onClick={()=>setTxns(p=>p.filter(x=>x.id!==t.id))} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sand)",fontSize:18,flexShrink:0}}>×</button></div>);})}</div>}
         {tab==="budgets"&&<div className="pin-card" style={{padding:"18px"}}><SectionHeader title="Set Monthly Limits"/><div className="budget-limits-grid">{Object.entries(ECATS).map(([k,v])=><div key={k} style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:17,flexShrink:0}}>{v.icon}</span><label style={{fontSize:12,color:"var(--ink)",flex:1,fontWeight:600}}>{v.label}</label><input type="number" className="pin-input" value={budgets[k]||""} onChange={e=>setBudgets(p=>({...p,[k]:parseFloat(e.target.value)||0}))} placeholder="₹0" style={{width:85}}/></div>)}</div></div>}
       </div>
     </div>
@@ -573,18 +687,20 @@ function BudgetTemplate({ username }) {
 const MOODS=["😊","😐","😔","😤","🤩","😴","😰","🥰"];
 const DEF_ENT=[{id:uid(),date:todayISO(),mood:"🤩",title:"A great start",body:"Today felt really productive. Completed all my morning tasks and had a wonderful breakfast.",tags:["productive","morning"]}];
 
-function JournalTemplate({ username }) {
-  const [entries,setEntries]=usePersist(username,"journal_v1",DEF_ENT);
-  const [selected,setSelected]=useState(entries[0]?.id||null);
+function JournalTemplate() {
+  const [entries, setEntries, loaded] = useSupaPersist("journal_v1", DEF_ENT);
+  const [selected,setSelected]=useState(null);
   const [editing,setEditing]=useState(false);const [form,setForm]=useState({date:todayISO(),mood:"😊",title:"",body:"",tags:[]});const [tagInput,setTagInput]=useState("");
+  useEffect(()=>{ if(loaded&&entries.length>0&&!selected) setSelected(entries[0].id); },[loaded]);
   const entry=entries.find(e=>e.id===selected);
   const save=()=>{if(!form.title.trim()&&!form.body.trim())return;const id=uid();setEntries(p=>[{id,...form},...p]);setSelected(id);setEditing(false);setForm({date:todayISO(),mood:"😊",title:"",body:"",tags:[]});};
   const addTag=()=>{if(tagInput.trim()&&!form.tags.includes(tagInput.trim()))setForm(p=>({...p,tags:[...p.tags,tagInput.trim()]}));setTagInput("");};
 
+  if (!loaded) return <Loader text="Loading journal…"/>;
+
   return (
     <div style={{background:"var(--cream)",minHeight:"100vh",fontFamily:"'Nunito',sans-serif",paddingBottom:90}}>
       <div className="journal-layout">
-        {/* Sidebar */}
         <div className="journal-sidebar" style={{background:"#F9F2E8",borderRight:"1px solid var(--border)",padding:"18px 0",display:"flex",flexDirection:"column",overflowY:"auto"}}>
           <div style={{padding:"0 14px 14px",borderBottom:"1px solid var(--border)"}}>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontStyle:"italic",fontWeight:700,color:"var(--ink)",marginBottom:2}}>My Journal</div>
@@ -600,8 +716,6 @@ function JournalTemplate({ username }) {
             ))}
           </div>
         </div>
-
-        {/* Main */}
         <div className="journal-main" style={{padding:"28px 36px",overflowY:"auto"}}>
           {editing?(
             <div style={{maxWidth:600,animation:"fadeUp .3s ease"}}>
@@ -640,13 +754,15 @@ const WT={cardio:{color:"#F87171",icon:"🏃",label:"Cardio"},strength:{color:"#
 const DEF_WO=[{id:uid(),date:todayISO(),type:"strength",name:"Push Day",duration:45,calories:320,notes:"Bench: 3x10 @ 80kg"},{id:uid(),date:todayISO(),type:"cardio",name:"Morning Run",duration:30,calories:280,notes:"5.2km"}];
 const DEF_GL={weeklyWorkouts:5,dailyCalories:500,weeklyDuration:200};
 
-function FitnessTemplate({ username }) {
-  const [workouts,setWorkouts]=usePersist(username,"fitness_v1",DEF_WO);
-  const [goals,setGoals]=usePersist(username,"fitness_goals_v1",DEF_GL);
+function FitnessTemplate() {
+  const [workouts, setWorkouts, w1] = useSupaPersist("fitness_v1",       DEF_WO);
+  const [goals,    setGoals,    w2] = useSupaPersist("fitness_goals_v1",  DEF_GL);
   const [adding,setAdding]=useState(false);const [form,setForm]=useState({date:todayISO(),type:"cardio",name:"",duration:"",calories:"",notes:""});const [tab,setTab]=useState("log");
   const week=days7();const tw=workouts.filter(w=>week.includes(w.date));const tdW=workouts.filter(w=>w.date===todayISO());
   const wCals=tw.reduce((a,w)=>a+(w.calories||0),0);const wMins=tw.reduce((a,w)=>a+(w.duration||0),0);
   const submit=()=>{if(!form.name.trim())return;setWorkouts(p=>[{id:uid(),...form,duration:+form.duration,calories:+form.calories},...p]);setForm({date:todayISO(),type:"cardio",name:"",duration:"",calories:"",notes:""});setAdding(false);};
+
+  if (!w1||!w2) return <Loader text="Loading fitness…"/>;
 
   return (
     <div style={{background:"var(--cream)",minHeight:"100vh",fontFamily:"'Nunito',sans-serif"}}>
@@ -661,15 +777,11 @@ function FitnessTemplate({ username }) {
           </div>
         </div>
       </div>
-
       <div className="section-wrap page-body">
         <div className="budget-actions">
-          <div className="tab-bar">
-            {["log","stats","goals"].map(t=><button key={t} onClick={()=>setTab(t)} className={`pill-btn${tab===t?" active":""}`} style={{padding:"6px 12px",fontSize:12}}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>)}
-          </div>
+          <div className="tab-bar">{["log","stats","goals"].map(t=><button key={t} onClick={()=>setTab(t)} className={`pill-btn${tab===t?" active":""}`} style={{padding:"6px 12px",fontSize:12}}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>)}</div>
           <button className="pill-btn red" onClick={()=>setAdding(p=>!p)} style={{fontSize:12}}>+ Log workout</button>
         </div>
-
         {adding&&(
           <div className="pin-card" style={{padding:"14px",marginBottom:16,animation:"popIn .2s ease"}}>
             <div className="form-grid-4" style={{marginBottom:10}}>
@@ -685,22 +797,20 @@ function FitnessTemplate({ username }) {
             </div>
           </div>
         )}
-
         {tab==="log"&&(
           <div className="masonry">
             {workouts.length===0&&<div style={{padding:"36px",textAlign:"center",color:"var(--warm-gray)",fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontStyle:"italic"}}>No workouts logged yet</div>}
             {workouts.map((w,i)=>{const wt=WT[w.type];return(
               <div key={w.id} className="pin-card" style={{padding:"14px",borderLeft:`3px solid ${wt.color}`,animationDelay:`${i*.04}s`}}>
-                <div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{width:36,height:36,borderRadius:11,background:wt.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{wt.icon}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700,color:"var(--ink)"}}>{w.name}</div><div style={{fontSize:11,color:"var(--warm-gray)",marginTop:2}}>{w.date}</div>{w.notes&&<div style={{fontSize:11,color:"var(--warm-gray)",marginTop:3}}>{w.notes}</div>}</div><button onClick={()=>setWorkouts(p=>p.filter(x=>x.id!==w.id))} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sand)",fontSize:17,flexShrink:0,touchAction:"manipulation"}}>×</button></div>
+                <div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{width:36,height:36,borderRadius:11,background:wt.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{wt.icon}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700,color:"var(--ink)"}}>{w.name}</div><div style={{fontSize:11,color:"var(--warm-gray)",marginTop:2}}>{w.date}</div>{w.notes&&<div style={{fontSize:11,color:"var(--warm-gray)",marginTop:3}}>{w.notes}</div>}</div><button onClick={()=>setWorkouts(p=>p.filter(x=>x.id!==w.id))} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sand)",fontSize:17,flexShrink:0}}>×</button></div>
                 <div style={{display:"flex",gap:7,marginTop:10}}><span style={{fontSize:11,fontWeight:700,color:wt.color,background:wt.color+"12",borderRadius:999,padding:"3px 9px"}}>{w.duration}m</span><span style={{fontSize:11,fontWeight:700,color:"#F87171",background:"#FEF2F2",borderRadius:999,padding:"3px 9px"}}>{w.calories} kcal</span></div>
               </div>
             );})}
           </div>
         )}
-
         {tab==="stats"&&(
           <div className="fitness-stat-grid">
-            <div className="pin-card span-2" style={{padding:"16px",gridColumn:"span 2"}}>
+            <div className="pin-card" style={{padding:"16px",gridColumn:"span 2"}}>
               <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:"var(--ink)",marginBottom:12}}>Workouts This Week</div>
               <div className="week-bar">
                 {week.map(d=>{const wks=workouts.filter(w=>w.date===d).length;const maxW=Math.max(...week.map(d2=>workouts.filter(w=>w.date===d2).length),1);const h=Math.max((wks/maxW)*70,wks>0?12:4);return(<div key={d} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><div style={{width:"100%",height:h,background:wks?"var(--rose)":"var(--sand)",borderRadius:5,transition:"height .4s"}}/><div style={{fontSize:9,color:"var(--warm-gray)",fontWeight:700}}>{new Date(d+"T00:00").toLocaleDateString("en-US",{weekday:"short"})}</div></div>);})}
@@ -709,7 +819,6 @@ function FitnessTemplate({ username }) {
             {Object.entries(WT).map(([type,wt])=>{const cnt=tw.filter(w=>w.type===type).length;const cals=tw.filter(w=>w.type===type).reduce((a,w)=>a+(w.calories||0),0);return(<div key={type} className="pin-card" style={{padding:"13px 15px",borderLeft:`3px solid ${wt.color}`}}><div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}><span style={{fontSize:17}}>{wt.icon}</span><span style={{fontSize:12,fontWeight:700,color:"var(--ink)"}}>{wt.label}</span></div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,color:wt.color}}>{cnt} <span style={{fontSize:11,color:"var(--warm-gray)",fontFamily:"'Nunito',sans-serif"}}>sessions</span></div><div style={{fontSize:11,color:"var(--warm-gray)",marginTop:3}}>{cals} kcal this week</div></div>);})}
           </div>
         )}
-
         {tab==="goals"&&(
           <div className="pin-card" style={{padding:"18px",maxWidth:460}}>
             <SectionHeader title="Weekly Goals"/>
@@ -739,7 +848,7 @@ const TEMPLATES=[
 ];
 const HEIGHTS=[180,210,170,200,185];
 
-function HomePage({ username, onLogout, onSelect }) {
+function HomePage({ userEmail, onLogout, onSelect }) {
   return (
     <div style={{background:"var(--cream)",minHeight:"100vh",fontFamily:"'Nunito',sans-serif"}}>
       <div style={{position:"sticky",top:0,zIndex:100,background:"rgba(253,248,243,.92)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderBottom:"1px solid var(--border)",padding:"11px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -748,11 +857,10 @@ function HomePage({ username, onLogout, onSelect }) {
           Dayloom
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:13,fontWeight:700,color:"var(--ink)"}}>👤 {username}</span>
+          <span style={{fontSize:12,fontWeight:600,color:"var(--warm-gray)",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>👤 {userEmail}</span>
           <button className="pill-btn" onClick={onLogout} style={{fontSize:12,padding:"6px 12px"}}>Sign out</button>
         </div>
       </div>
-
       <div style={{maxWidth:900,margin:"0 auto",padding:"28px 18px 100px"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:12,color:"var(--terracotta)",fontWeight:600,letterSpacing:".14em",textTransform:"uppercase",marginBottom:8}}>Weaving your day together</div>
@@ -794,21 +902,36 @@ function WithNav({ active, setActive, children }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ROOT
+// ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [username, setUsername] = useState(() => getCurrentSession());
-  const [active, setActive] = useState(null);
+  const [userEmail, setUserEmail] = useState(() => _userEmail);
+  const [active, setActive]       = useState(null);
+  const [checking, setChecking]   = useState(!_token ? false : true);
 
-  const login  = u => { setUsername(u); setActive(null); };
-  const logout = () => { setSession(null); setUsername(null); setActive(null); };
+  // On mount: try to refresh session if token exists
+  useEffect(() => {
+    if (!_token) return;
+    supaRefreshToken().then(ok => {
+      if (!ok) { _token = null; localStorage.removeItem("sb_token"); setUserEmail(null); }
+      else setUserEmail(_userEmail);
+      setChecking(false);
+    });
+  }, []);
 
-  if (!username) return <LoginPage onLogin={login} />;
-  if (!active)   return <HomePage username={username} onLogout={logout} onSelect={setActive} />;
+  const login  = (email) => { setUserEmail(email); setActive(null); };
+  const logout = async () => { await supaSignOut(); setUserEmail(null); setActive(null); };
+
+  if (checking) return <Loader text="Restoring your session…"/>;
+  if (!userEmail) return <LoginPage onLogin={login}/>;
+  if (!active)    return <HomePage userEmail={userEmail} onLogout={logout} onSelect={setActive}/>;
 
   const nav = ch => <WithNav active={active} setActive={setActive}>{ch}</WithNav>;
-  if (active==="habits")  return nav(<HabitsTemplate  username={username}/>);
-  if (active==="tasks")   return nav(<TaskTemplate    username={username}/>);
-  if (active==="budget")  return nav(<BudgetTemplate  username={username}/>);
-  if (active==="journal") return nav(<JournalTemplate username={username}/>);
-  if (active==="fitness") return nav(<FitnessTemplate username={username}/>);
+  if (active==="habits")  return nav(<HabitsTemplate/>);
+  if (active==="tasks")   return nav(<TaskTemplate/>);
+  if (active==="budget")  return nav(<BudgetTemplate/>);
+  if (active==="journal") return nav(<JournalTemplate/>);
+  if (active==="fitness") return nav(<FitnessTemplate/>);
   return null;
 }
