@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
 
-// ── Global styles & fonts (injected into <head>) ──────────────────────────────
+// ── Global styles & fonts ─────────────────────────────────────────────────────
 import "./lib/globalStyles";
 
 // ── Supabase auth ─────────────────────────────────────────────────────────────
 import {
-  _userEmail,
-  _token,
+  getToken,
+  getUserEmail,
   supaRefreshToken,
   supaSignOut,
 } from "./lib/supabase";
 
 // ── Pages & layout ────────────────────────────────────────────────────────────
-import LoginPage              from "./components/LoginPage";
-import HomePage               from "./components/HomePage";
-import WithNav                from "./components/WithNav";
+import LoginPage  from "./components/LoginPage";
+import HomePage   from "./components/HomePage";
+import WithNav    from "./components/WithNav";
 
 // ── Template boards ───────────────────────────────────────────────────────────
 import HabitsTemplate  from "./templates/HabitsTemplate";
@@ -24,7 +24,7 @@ import JournalTemplate from "./templates/JournalTemplate";
 import FitnessTemplate from "./templates/FitnessTemplate";
 import StudyTemplate   from "./templates/StudyTemplate";
 
-// ── Loader (inline — needed before auth resolves) ─────────────────────────────
+// ── Loader ────────────────────────────────────────────────────────────────────
 function Loader({ text = "Loading…" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 16, fontFamily: "'Nunito',sans-serif", color: "#6B5E56" }}>
@@ -34,30 +34,42 @@ function Loader({ text = "Loading…" }) {
   );
 }
 
-// ── Board map ─────────────────────────────────────────────────────────────────
-const BOARDS = {
-  habits:  <HabitsTemplate  />,
-  tasks:   <TaskTemplate    />,
-  budget:  <BudgetTemplate  />,
-  journal: <JournalTemplate />,
-  fitness: <FitnessTemplate />,
-  study:   <StudyTemplate   />,
-};
+// ── Board renderer — rendered lazily inside the component so auth is ready ────
+function ActiveBoard({ id }) {
+  switch (id) {
+    case "habits":  return <HabitsTemplate  />;
+    case "tasks":   return <TaskTemplate    />;
+    case "budget":  return <BudgetTemplate  />;
+    case "journal": return <JournalTemplate />;
+    case "fitness": return <FitnessTemplate />;
+    case "study":   return <StudyTemplate   />;
+    default:        return null;
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROOT
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [userEmail, setUserEmail] = useState(() => _userEmail);
+  // Read live values via getters — these are correct even after a refresh
+  const [userEmail, setUserEmail] = useState(() => getUserEmail());
   const [active,    setActive]    = useState(null);
-  const [checking,  setChecking]  = useState(_token ? true : false);
 
-  // Restore session on mount
+  // If a token exists in localStorage, verify it before rendering boards
+  const [checking, setChecking] = useState(() => !!getToken());
+
   useEffect(() => {
-    if (!_token) return;
+    if (!getToken()) return;
     supaRefreshToken().then(ok => {
-      if (!ok) {
+      if (ok) {
+        // Token refreshed — update email in case it was stale
+        setUserEmail(getUserEmail());
+      } else {
+        // Token invalid — log out cleanly
         localStorage.removeItem("sb_token");
+        localStorage.removeItem("sb_uid");
+        localStorage.removeItem("sb_email");
+        localStorage.removeItem("sb_refresh");
         setUserEmail(null);
       }
       setChecking(false);
@@ -72,9 +84,10 @@ export default function App() {
   if (!userEmail) return <LoginPage onLogin={login} />;
   if (!active)    return <HomePage userEmail={userEmail} onLogout={logout} onSelect={setActive} />;
 
+  // Boards only mount AFTER auth is confirmed → useSupaPersist gets a valid userId
   return (
     <WithNav active={active} setActive={setActive}>
-      {BOARDS[active] ?? null}
+      <ActiveBoard id={active} />
     </WithNav>
   );
 }

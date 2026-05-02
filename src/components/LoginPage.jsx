@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supaSignUp, supaSignIn, _token, _userId, _userEmail } from "../lib/supabase";
+import { supaSignUp, supaSignIn } from "../lib/supabase";
 
 const BOARDS = [
   { emoji: "🌿", label: "Daily Habits",   color: "#34D399", bg: "#F0FDF4" },
@@ -28,18 +28,19 @@ export default function LoginPage({ onLogin }) {
       if (mode === "signup") {
         const d = await supaSignUp(e, password);
         if (d.access_token) {
-          localStorage.setItem("sb_token",   d.access_token);
-          localStorage.setItem("sb_uid",     d.user?.id);
-          localStorage.setItem("sb_email",   d.user?.email);
+          // supaSignIn handles localStorage; for signup we set manually
+          localStorage.setItem("sb_token",  d.access_token);
+          localStorage.setItem("sb_uid",    d.user?.id);
+          localStorage.setItem("sb_email",  d.user?.email);
           if (d.refresh_token) localStorage.setItem("sb_refresh", d.refresh_token);
-          onLogin(e);
+          onLogin(d.user?.email || e);
         } else {
           setError("Check your email to confirm your account, then sign in.");
           setMode("login");
         }
       } else {
-        const d = await supaSignIn(e, password);
-        if (d.refresh_token) localStorage.setItem("sb_refresh", d.refresh_token);
+        // supaSignIn already sets _token, _userId, _userEmail + localStorage
+        await supaSignIn(e, password);
         onLogin(e);
       }
     } catch (err) {

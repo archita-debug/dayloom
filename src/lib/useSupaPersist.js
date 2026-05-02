@@ -1,33 +1,67 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { dbGet, dbSet } from "./supabase";
 
-// ── useSupaPersist ─────────────────────────────────────────────────────────────
-// Loads from Supabase on mount, saves back whenever state changes.
-// Returns [state, setState, isLoaded].
+/**
+ * useSupaPersist(key, init)
+ *
+ * 1. Seed from localStorage immediately (instant, no flash).
+ * 2. Fetch from Supabase (source of truth) and update if different.
+ * 3. On user change: write localStorage immediately + debounce Supabase PATCH/POST.
+ * 4. Never write back from the initial load — only from user actions.
+ */
 export function useSupaPersist(key, init) {
-  const [state, setState] = useState(init);
-  const [loaded, setLoaded] = useState(false);
-  const saveTimer = useState(null); // ref-like mutable slot
+  const [state, setState] = useState(() => {
+    try {
+      const cached = localStorage.getItem("dl_" + key);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return init;
+  });
 
-  // Load once on mount
+  const [loaded, setLoaded] = useState(false);
+  const timerRef = useRef(null);
+  const dirtyRef = useRef(-1);
+
+  // ── Load from Supabase once on mount ────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+    dirtyRef.current = -1;
+    setLoaded(false);
+
     dbGet(key).then((v) => {
-      if (!cancelled) {
-        if (v !== null) setState(v);
-        setLoaded(true);
+      if (cancelled) return;
+      if (v !== null) {
+        setState(v);
+        try { localStorage.setItem("dl_" + key, JSON.stringify(v)); } catch {}
       }
+      setLoaded(true);
+    }).catch(() => {
+      if (!cancelled) setLoaded(true);
     });
+
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  // Debounced save (600 ms) whenever state changes after load
+  // ── Save on user changes only (not on initial load) ──────────────────────
   useEffect(() => {
     if (!loaded) return;
-    clearTimeout(saveTimer[0]);
-    saveTimer[0] = setTimeout(() => { dbSet(key, state); }, 600);
-    return () => clearTimeout(saveTimer[0]);
-  }, [state, loaded, key]);
+
+    dirtyRef.current += 1;
+    if (dirtyRef.current === 0) return; // skip the load-triggered run
+
+    // Write to localStorage immediately
+    try { localStorage.setItem("dl_" + key, JSON.stringify(state)); } catch {}
+
+    // Debounce the Supabase write (PATCH if exists, POST if new)
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      dbSet(key, state);
+    }, 800);
+
+    return () => clearTimeout(timerRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, loaded]);
 
   return [state, setState, loaded];
 }

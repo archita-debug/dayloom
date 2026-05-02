@@ -1,12 +1,15 @@
-// ─── Supabase Client (REST API, no npm needed) ────────────────────────────────
+// ─── Supabase Client ──────────────────────────────────────────────────────────
 export const SUPA_URL = "https://nhricohdcwqvmkhrenmq.supabase.co";
 export const SUPA_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocmljb2hkY3dxdm1raHJlbm1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTQ1NTksImV4cCI6MjA5MzEzMDU1OX0.DHPhcUZVCgGR9fAEbh3E_cHmivkO-X_SNrp5eYZgicc";
 
-// Persist auth token in localStorage so session survives refresh
-export let _token     = localStorage.getItem("sb_token")  || null;
-export let _userId    = localStorage.getItem("sb_uid")    || null;
-export let _userEmail = localStorage.getItem("sb_email")  || null;
+let _token     = localStorage.getItem("sb_token")  || null;
+let _userId    = localStorage.getItem("sb_uid")    || null;
+let _userEmail = localStorage.getItem("sb_email")  || null;
+
+export const getToken     = () => _token;
+export const getUserId    = () => _userId;
+export const getUserEmail = () => _userEmail;
 
 export function authHeaders(extra = {}) {
   return {
@@ -43,6 +46,7 @@ export async function supaSignIn(email, password) {
   localStorage.setItem("sb_token",   _token);
   localStorage.setItem("sb_uid",     _userId);
   localStorage.setItem("sb_email",   _userEmail);
+  if (d.refresh_token) localStorage.setItem("sb_refresh", d.refresh_token);
   return d;
 }
 
@@ -55,6 +59,7 @@ export async function supaSignOut() {
   localStorage.removeItem("sb_token");
   localStorage.removeItem("sb_uid");
   localStorage.removeItem("sb_email");
+  localStorage.removeItem("sb_refresh");
 }
 
 export async function supaRefreshToken() {
@@ -71,10 +76,10 @@ export async function supaRefreshToken() {
     _token     = d.access_token;
     _userId    = d.user?.id;
     _userEmail = d.user?.email;
-    localStorage.setItem("sb_token",    _token);
-    localStorage.setItem("sb_uid",      _userId);
-    localStorage.setItem("sb_email",    _userEmail);
-    localStorage.setItem("sb_refresh",  d.refresh_token);
+    localStorage.setItem("sb_token",   _token);
+    localStorage.setItem("sb_uid",     _userId);
+    localStorage.setItem("sb_email",   _userEmail);
+    localStorage.setItem("sb_refresh", d.refresh_token);
     return true;
   } catch {
     return false;
@@ -83,23 +88,47 @@ export async function supaRefreshToken() {
 
 // ── Data (user_data table) ────────────────────────────────────────────────────
 export async function dbGet(key) {
-  const r = await fetch(
-    `${SUPA_URL}/rest/v1/user_data?user_id=eq.${_userId}&key=eq.${key}&select=value`,
-    { headers: authHeaders({ Accept: "application/json" }) }
-  );
-  if (!r.ok) return null;
-  const rows = await r.json();
-  return rows[0]?.value ?? null;
+  const uid = getUserId();
+  if (!uid) return null;
+  try {
+    const url = `${SUPA_URL}/rest/v1/user_data?user_id=eq.${uid}&key=eq.${encodeURIComponent(key)}&select=value`;
+    const r = await fetch(url, { headers: authHeaders({ Accept: "application/json" }) });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows[0]?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function dbSet(key, value) {
-  const r = await fetch(`${SUPA_URL}/rest/v1/user_data`, {
-    method: "POST",
-    headers: authHeaders({ Prefer: "resolution=merge-duplicates" }),
-    body: JSON.stringify({ user_id: _userId, key, value }),
-  });
-  if (!r.ok) {
-    const e = await r.text();
-    console.error("dbSet error:", e);
+  const uid = getUserId();
+  if (!uid) return;
+
+  // Check if row already exists
+  const existsUrl = `${SUPA_URL}/rest/v1/user_data?user_id=eq.${uid}&key=eq.${encodeURIComponent(key)}&select=user_id`;
+  const existsRes = await fetch(existsUrl, { headers: authHeaders({ Accept: "application/json" }) });
+  const existsRows = existsRes.ok ? await existsRes.json() : [];
+  const rowExists = existsRows.length > 0;
+
+  if (rowExists) {
+    // UPDATE existing row with PATCH
+    const r = await fetch(
+      `${SUPA_URL}/rest/v1/user_data?user_id=eq.${uid}&key=eq.${encodeURIComponent(key)}`,
+      {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify({ value }),
+      }
+    );
+    if (!r.ok) console.error("[supabase] PATCH failed:", await r.text());
+  } else {
+    // INSERT new row with POST
+    const r = await fetch(`${SUPA_URL}/rest/v1/user_data`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ user_id: uid, key, value }),
+    });
+    if (!r.ok) console.error("[supabase] POST failed:", await r.text());
   }
 }
