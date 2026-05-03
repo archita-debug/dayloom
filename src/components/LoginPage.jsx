@@ -61,7 +61,7 @@ export default function LoginPage({ onLogin }) {
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 13, color: "var(--terracotta)", letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 10 }}>Your Boards</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {BOARDS.map((b, i) => (
-              <div key={b.label} style={{ background: b.bg, border: "1px solid rgba(0,0,0,.06)", borderRadius: 20, padding: "18px 16px", animation: `fadeUp .5s ease ${i * 0.1}s both`, gridColumn: i === 5 ? "span 2" : "auto" }}>
+              <div key={b.label} style={{ background: b.bg, border: "1px solid rgba(0,0,0,.06)", borderRadius: 20, padding: "18px 16px", animation: `fadeUp .5s ease ${i * 0.1}s both`, gridColumn: i === 6 ? "span 2" : "auto" }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>{b.emoji}</div>
                 <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{b.label}</div>
                 <div style={{ marginTop: 8, height: 4, borderRadius: 999, background: "rgba(0,0,0,.06)", overflow: "hidden" }}>

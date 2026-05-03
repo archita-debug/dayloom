@@ -7,7 +7,7 @@ export const TEMPLATES = [
   { id: "study",   label: "Study Tracker",   emoji: "📚", desc: "Sessions, subjects & focus time", accent: "#06B6D4", bg: "linear-gradient(135deg,#ECFEFF,#CFFAFE)" },
 ];
 
-const HEIGHTS = [180, 210, 170, 200, 185, 190];
+const HEIGHTS = [210, 210, 210, 210, 210, 210];
 
 export default function HomePage({ userEmail, onLogout, onSelect }) {
   return (
@@ -29,7 +29,7 @@ export default function HomePage({ userEmail, onLogout, onSelect }) {
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 12, color: "var(--terracotta)", fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", marginBottom: 8 }}>Weaving your day together</div>
           <div className="home-title">Choose your board</div>
-          <div style={{ fontSize: 14, color: "var(--warm-gray)" }}>Six apps, beautifully yours. Pick one to get started.</div>
+          <div style={{ fontSize: 14, color: "var(--warm-gray)" }}>Six trackers, beautifully yours. Pick one to get started.</div>
         </div>
 
         <div className="home-board-grid">
