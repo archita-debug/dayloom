@@ -10,7 +10,7 @@ const BOARDS = [
   { emoji: "📚", label: "Study Tracker",  color: "#06B6D4", bg: "#ECFEFF" },
 ];
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage({ onLogin, sessionExpired = false }) {
   const [mode, setMode]       = useState("login");
   const [email, setEmail]     = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +61,7 @@ export default function LoginPage({ onLogin }) {
           <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 13, color: "var(--terracotta)", letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 10 }}>Your Boards</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {BOARDS.map((b, i) => (
-              <div key={b.label} style={{ background: b.bg, border: "1px solid rgba(0,0,0,.06)", borderRadius: 20, padding: "18px 16px", animation: `fadeUp .5s ease ${i * 0.1}s both`, gridColumn: i === 6 ? "span 2" : "auto" }}>
+              <div key={b.label} style={{ background: b.bg, border: "1px solid rgba(0,0,0,.06)", borderRadius: 20, padding: "18px 16px", animation: `fadeUp .5s ease ${i * 0.1}s both`, gridColumn: i === 5 ? "span 2" : "auto" }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>{b.emoji}</div>
                 <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{b.label}</div>
                 <div style={{ marginTop: 8, height: 4, borderRadius: 999, background: "rgba(0,0,0,.06)", overflow: "hidden" }}>
@@ -90,6 +90,11 @@ export default function LoginPage({ onLogin }) {
             {mode === "login" ? "Sign in to access your boards from any device." : "Start tracking your goals today."}
           </div>
 
+          {sessionExpired && !error && (
+            <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 12, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#C2410C", animation: "popIn .2s ease" }}>
+              🔒 Your session expired — please sign in again.
+            </div>
+          )}
           {error && (
             <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#DC2626", animation: "popIn .2s ease" }}>
               ⚠️ {error}
