@@ -20,6 +20,30 @@ export function authHeaders(extra = {}) {
   };
 }
 
+// ── Clear cached board data for a specific user ───────────────────────────────
+// Keys are namespaced as "dl_{userId}_{dataKey}" so clearing by userId prefix
+// only removes that user's data, never another user's cache.
+function clearUserCache(uid) {
+  if (!uid) return;
+  const prefix = `dl_${uid}_`;
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(prefix)) keysToRemove.push(k);
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+}
+
+// ── Clear all auth + that user's board cache ──────────────────────────────────
+export function clearAllAuth() {
+  clearUserCache(_userId);  // only wipes THIS user's namespaced cache
+  _token = _userId = _userEmail = null;
+  localStorage.removeItem("sb_token");
+  localStorage.removeItem("sb_uid");
+  localStorage.removeItem("sb_email");
+  localStorage.removeItem("sb_refresh");
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export async function supaSignUp(email, password) {
   const r = await fetch(`${SUPA_URL}/auth/v1/signup`, {
@@ -40,6 +64,9 @@ export async function supaSignIn(email, password) {
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error_description || d.msg || "Sign-in failed");
+
+  // No need to clear cache — keys are now namespaced by userId,
+  // so user B's keys (dl_{B_uid}_*) never collide with user A's (dl_{A_uid}_*)
   _token     = d.access_token;
   _userId    = d.user?.id;
   _userEmail = d.user?.email;
@@ -55,24 +82,26 @@ export async function supaSignOut() {
     method: "POST",
     headers: authHeaders(),
   }).catch(() => {});
-  _token = _userId = _userEmail = null;
-  localStorage.removeItem("sb_token");
-  localStorage.removeItem("sb_uid");
-  localStorage.removeItem("sb_email");
-  localStorage.removeItem("sb_refresh");
+  clearAllAuth();
 }
 
 export async function supaRefreshToken() {
   const refresh = localStorage.getItem("sb_refresh");
-  if (!refresh) return false;
+  if (!refresh) {
+    clearAllAuth();
+    return false;
+  }
   try {
     const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "apikey": SUPA_KEY },
       body: JSON.stringify({ refresh_token: refresh }),
     });
+    if (!r.ok) {
+      clearAllAuth();
+      return false;
+    }
     const d = await r.json();
-    if (!r.ok) return false;
     _token     = d.access_token;
     _userId    = d.user?.id;
     _userEmail = d.user?.email;
@@ -105,14 +134,12 @@ export async function dbSet(key, value) {
   const uid = getUserId();
   if (!uid) return;
 
-  // Check if row already exists
   const existsUrl = `${SUPA_URL}/rest/v1/user_data?user_id=eq.${uid}&key=eq.${encodeURIComponent(key)}&select=user_id`;
   const existsRes = await fetch(existsUrl, { headers: authHeaders({ Accept: "application/json" }) });
   const existsRows = existsRes.ok ? await existsRes.json() : [];
-  const rowExists = existsRows.length > 0;
+  const rowExists  = existsRows.length > 0;
 
   if (rowExists) {
-    // UPDATE existing row with PATCH
     const r = await fetch(
       `${SUPA_URL}/rest/v1/user_data?user_id=eq.${uid}&key=eq.${encodeURIComponent(key)}`,
       {
@@ -123,7 +150,6 @@ export async function dbSet(key, value) {
     );
     if (!r.ok) console.error("[supabase] PATCH failed:", await r.text());
   } else {
-    // INSERT new row with POST
     const r = await fetch(`${SUPA_URL}/rest/v1/user_data`, {
       method: "POST",
       headers: authHeaders(),
